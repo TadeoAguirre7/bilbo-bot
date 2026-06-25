@@ -3,7 +3,7 @@ export interface ZenModel {
   name?: string;
 }
 
-const ZEN_BASE_URL = 'https://opencode.ai/zen/v1';
+const ZEN_BASE_URL = process.env.ZEN_BASE_URL ?? 'https://opencode.ai/zen/go/v1';
 
 export async function fetchZenModels(apiKey: string): Promise<ZenModel[]> {
   const response = await fetch(`${ZEN_BASE_URL}/models`, {

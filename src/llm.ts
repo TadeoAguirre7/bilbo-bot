@@ -1,7 +1,7 @@
 import OpenAI from 'openai';
 import { fetchZenModels } from './models';
 
-const ZEN_BASE_URL = 'https://opencode.ai/zen/v1';
+const ZEN_BASE_URL = process.env.ZEN_BASE_URL ?? 'https://opencode.ai/zen/go/v1';
 
 let zenClient: OpenAI | null = null;
 let availableModels: string[] = [];
