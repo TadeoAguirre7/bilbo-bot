@@ -1,4 +1,4 @@
-import { notion, databaseId } from './notion';
+import { databaseId, notionRequest } from './notion';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -18,24 +18,26 @@ export async function getHistory(
   chatId: string | number,
   limit: number
 ): Promise<ChatMessage[]> {
-  const response = await notion.request<NotionQueryResponse>({
-    path: `databases/${databaseId}/query`,
-    method: 'post',
-    body: {
-      filter: {
-        property: 'Chat ID',
-        rich_text: {
-          equals: String(chatId),
+  const response = await notionRequest<NotionQueryResponse>(
+    `databases/${databaseId}/query`,
+    {
+      method: 'POST',
+      body: {
+        filter: {
+          property: 'Chat ID',
+          rich_text: {
+            equals: String(chatId),
+          },
         },
+        sorts: [
+          {
+            property: 'Created At',
+            direction: 'ascending',
+          },
+        ],
       },
-      sorts: [
-        {
-          property: 'Created At',
-          direction: 'ascending',
-        },
-      ],
-    },
-  });
+    }
+  );
 
   return response.results.slice(0, limit).map((page) => ({
     role: page.properties.Role.select?.name as ChatMessage['role'],
@@ -49,9 +51,8 @@ export async function addMessage(
   content: string,
   model?: string
 ): Promise<void> {
-  await notion.request({
-    path: 'pages',
-    method: 'post',
+  await notionRequest('pages', {
+    method: 'POST',
     body: {
       parent: { database_id: databaseId },
       properties: {
@@ -76,23 +77,24 @@ export async function addMessage(
 }
 
 export async function clearHistory(chatId: string | number): Promise<void> {
-  const response = await notion.request<NotionQueryResponse>({
-    path: `databases/${databaseId}/query`,
-    method: 'post',
-    body: {
-      filter: {
-        property: 'Chat ID',
-        rich_text: {
-          equals: String(chatId),
+  const response = await notionRequest<NotionQueryResponse>(
+    `databases/${databaseId}/query`,
+    {
+      method: 'POST',
+      body: {
+        filter: {
+          property: 'Chat ID',
+          rich_text: {
+            equals: String(chatId),
+          },
         },
       },
-    },
-  });
+    }
+  );
 
   for (const page of response.results) {
-    await notion.request({
-      path: `pages/${page.id}`,
-      method: 'patch',
+    await notionRequest(`pages/${page.id}`, {
+      method: 'PATCH',
       body: {
         archived: true,
       },
