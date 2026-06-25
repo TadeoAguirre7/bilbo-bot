@@ -1,6 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { message } from 'telegraf/filters';
-import { getHistory, addMessage, clearHistory, type ChatMessage } from './memory';
+import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { getHistory, addMessage, clearHistory } from './memory';
 import { generateResponse, getAvailableModels, isModelAvailable } from './llm';
 
 const DEFAULT_MODEL = process.env.DEFAULT_MODEL ?? 'kimi-k2.5';
@@ -21,7 +22,7 @@ export function createBot(token: string): Telegraf {
 
   bot.start((ctx) => {
     ctx.reply(
-      '¡Hola! Soy Bilbo. Estoy conectado a los modelos de OpenCode Zen.\n\n' +
+      '¡Hola! Soy Bilbo. Estoy conectado a OpenCode Go y puedo buscar en internet.\n\n' +
         'Comandos:\n' +
         '/model <nombre> — Cambiar modelo\n' +
         '/models — Listar modelos disponibles\n' +
@@ -33,10 +34,11 @@ export function createBot(token: string): Telegraf {
   bot.help((ctx) => {
     ctx.reply(
       'Comandos disponibles:\n' +
-        '/model <nombre> — Cambiar modelo (ej: /model kimi-k2.5)\n' +
+        '/model <nombre> — Cambiar modelo (ej: /model glm-5.2)\n' +
         '/models — Listar modelos disponibles\n' +
         '/clear — Borrar el historial de conversación\n' +
         '/help — Ver esta ayuda\n\n' +
+        'Si me preguntás algo que necesita info actual, busco en internet automáticamente.\n\n' +
         `Modelo por defecto: ${DEFAULT_MODEL}`
     );
   });
@@ -88,9 +90,15 @@ export function createBot(token: string): Telegraf {
       await ctx.sendChatAction('typing');
 
       const history = await getHistory(chatId, MAX_HISTORY);
-      const messages: ChatMessage[] = [
-        { role: 'system', content: 'Sos Bilbo, un asistente útil y conciso.' },
-        ...history,
+      const messages: ChatCompletionMessageParam[] = [
+        {
+          role: 'system',
+          content:
+            'Sos Bilbo, un asistente útil y conciso. ' +
+            'Cuando te pregunten sobre hechos, eventos, datos, precios o noticias, ' +
+            'usá la herramienta web_search para buscar información actual en internet.',
+        },
+        ...history.map((m) => ({ role: m.role, content: m.content }) as ChatCompletionMessageParam),
         { role: 'user', content: userMessage },
       ];
 
