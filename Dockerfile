@@ -10,4 +10,6 @@ COPY . .
 
 RUN npm run build
 
-CMD ["npm", "start"]
+RUN chmod +x start.sh
+
+CMD ["./start.sh"]
