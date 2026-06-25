@@ -13,4 +13,4 @@ COPY . .
 RUN npm run db:generate
 RUN npm run build
 
-CMD npx prisma migrate deploy && npm start
+CMD if [ -z "$DATABASE_URL" ]; then echo "ERROR: DATABASE_URL is not set"; exit 1; fi && npx prisma migrate deploy && npm start
