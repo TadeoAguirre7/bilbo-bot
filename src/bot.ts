@@ -95,6 +95,7 @@ export function createBot(token: string): Telegraf {
           role: 'system',
           content:
             'Sos Bilbo, un asistente útil y conciso. ' +
+            'Tenés memoria de conversación: recordás los mensajes anteriores de este chat. ' +
             'Cuando te pregunten sobre hechos, eventos, datos, precios o noticias, ' +
             'usá la herramienta web_search para buscar información actual en internet.',
         },
