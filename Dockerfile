@@ -3,14 +3,11 @@ FROM node:20-alpine
 WORKDIR /app
 
 COPY package*.json ./
-COPY prisma ./prisma/
-COPY prisma.config.ts ./
 
 RUN npm ci
 
 COPY . .
 
-RUN npm run db:generate
 RUN npm run build
 
-CMD if [ -z "$DATABASE_URL" ]; then echo "ERROR: DATABASE_URL is not set"; exit 1; fi && npx prisma migrate deploy && npm start
+CMD ["npm", "start"]

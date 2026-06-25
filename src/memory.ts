@@ -1,23 +1,45 @@
-import { prisma } from './db';
+import { notion, databaseId } from './notion';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
+interface NotionPage {
+  id: string;
+  properties: Record<string, any>;
+}
+
+interface NotionQueryResponse {
+  results: NotionPage[];
+}
+
 export async function getHistory(
   chatId: string | number,
   limit: number
 ): Promise<ChatMessage[]> {
-  const messages = await prisma.message.findMany({
-    where: { chatId: String(chatId) },
-    orderBy: { createdAt: 'asc' },
-    take: limit,
+  const response = await notion.request<NotionQueryResponse>({
+    path: `databases/${databaseId}/query`,
+    method: 'post',
+    body: {
+      filter: {
+        property: 'Chat ID',
+        rich_text: {
+          equals: String(chatId),
+        },
+      },
+      sorts: [
+        {
+          property: 'Created At',
+          direction: 'ascending',
+        },
+      ],
+    },
   });
 
-  return messages.map((m) => ({
-    role: m.role as ChatMessage['role'],
-    content: m.content,
+  return response.results.slice(0, limit).map((page) => ({
+    role: page.properties.Role.select?.name as ChatMessage['role'],
+    content: page.properties.Content.rich_text?.[0]?.plain_text ?? '',
   }));
 }
 
@@ -27,18 +49,53 @@ export async function addMessage(
   content: string,
   model?: string
 ): Promise<void> {
-  await prisma.message.create({
-    data: {
-      chatId: String(chatId),
-      role,
-      content,
-      model,
+  await notion.request({
+    path: 'pages',
+    method: 'post',
+    body: {
+      parent: { database_id: databaseId },
+      properties: {
+        'Chat ID': {
+          title: [{ text: { content: String(chatId) } }],
+        },
+        Role: {
+          select: { name: role },
+        },
+        Content: {
+          rich_text: [{ text: { content } }],
+        },
+        Model: {
+          rich_text: [{ text: { content: model ?? '' } }],
+        },
+        'Created At': {
+          date: { start: new Date().toISOString() },
+        },
+      },
     },
   });
 }
 
 export async function clearHistory(chatId: string | number): Promise<void> {
-  await prisma.message.deleteMany({
-    where: { chatId: String(chatId) },
+  const response = await notion.request<NotionQueryResponse>({
+    path: `databases/${databaseId}/query`,
+    method: 'post',
+    body: {
+      filter: {
+        property: 'Chat ID',
+        rich_text: {
+          equals: String(chatId),
+        },
+      },
+    },
   });
+
+  for (const page of response.results) {
+    await notion.request({
+      path: `pages/${page.id}`,
+      method: 'patch',
+      body: {
+        archived: true,
+      },
+    });
+  }
 }
